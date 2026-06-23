@@ -1,0 +1,8 @@
+flask
+flask-login
+flask-sqlalchemy
+asyncio
+flask-ratelimit
+bcrypt
+psycopg2
+dotenv
