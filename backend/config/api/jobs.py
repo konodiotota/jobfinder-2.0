@@ -10,13 +10,14 @@ def Create_job():
         return {"erro": "Usuario não autenticado"},401
 
     if session.get("user_role") != 'company':
+        print(session.get('user_role'))
         return {"erro": "Usuario não é empresa"},400
     
     dados=request.form
     try:
         nova_vaga = Jobs(
             company_id=session['user_id'],
-            name_job=dados['name_vaga'],
+            name_job=dados['name_job'],
             quantity_oppening=dados['quantity_oppening'], 
             salary=dados['salary'], 
             working_hrs= dados['working_hrs'], 
@@ -47,7 +48,7 @@ def All_Jobs():
         jobs = sessao.query(Jobs).all()
         resultado = []
         if not jobs:
-            return {"erro":"Sem vagas criadas"},404
+            return {"erro":"Sem vagas criadas"}, 200
         for job in jobs:
             resultado.append({
                 "id": job.id,
@@ -60,11 +61,15 @@ def All_Jobs():
                 "requirements": job.requirements,
                 "addtional_info": job.addtional_info
             })
-            return jsonify(resultado)
+        return jsonify(resultado)
+    except Exception as e:
+        sessao.rollback()
+        print(f'algo aconteceu aqui na api jobs get: {e}')
+        return {"erro":"Ocorreu um erro interno"},400
     finally:
         sessao.close()
 
-@app.route('/api/jobs/<int:id>',methods=['PUT'])
+@app.route('/api/jobs/<int:job_id>',methods=['PUT'])
 def Edit_vaga(job_id):
     try:
         sessao= SessionLocal()
@@ -82,7 +87,7 @@ def Edit_vaga(job_id):
         dados=request.form
 
         job.name_job= dados.get("name_job", job.name_job)
-        job.quantity_oppening = dados.get("quantity_oppenings", job.quantity_oppening)
+        job.quantity_oppening = dados.get("quantity_oppening", job.quantity_oppening)
         job.salary = dados.get("salary", job.salary)
         job.working_hrs = dados.get("working_hrs", job.working_hrs)
         job.responsability = dados.get("responsability", job.responsability)
@@ -91,5 +96,39 @@ def Edit_vaga(job_id):
 
         sessao.commit()
         return {"sucess":"Vaga modificada com sucesso"}
+    except Exception as e:
+        sessao.rollback()
+        print(f'deu erro aqui na api jobs put: {e}')
+        return {"erro":"Ocorreu um erro interno"},400
     finally:
+        sessao.close()
+
+@app.route('/api/jobs/<int:job_id>', methods=['DELETE'])
+def Delete_job(job_id):
+    sessao= SessionLocal()
+    if "user_id" not in session:
+        return {"erro":"Usuario não Autenticado"}, 401
+    if session['user_role'] != "company":
+        return {"erro":"Usuario não é empresa"}, 400
+    try:
+        job = sessao.query(Jobs).filter_by(id=job_id).first()
+        if not job:
+            return {"erro":"Nenhuma vaga encontrada"}, 200
+
+        if job.company_id != session['user_id']:
+            return {"erro":"Voce não pode editar essa vaga"}, 403
+
+        sessao.delete(job)
         sessao.commit()
+        return {"sucesso":"Sucesso ao deletar a vaga"}, 200
+
+    except Exception as e:
+        sessao.rollback()
+        print(f'deu erro na api jobs delete: {e}')
+        return {"erro":"Ocorreu um erro interno"},400
+
+    finally:
+        sessao.close()
+
+# @app.route('/api/jobs/applications/<int:user_id>/<int:job_id>')
+# def Application_job(user_id, job_id):

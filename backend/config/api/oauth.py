@@ -56,6 +56,7 @@ def Login():
 
         if bcrypt.checkpw(senha.encode("utf-8"), email_existente.password_hash.encode("utf-8")):
             session['user_id'] = email_existente.id
+            session['user_role'] = email_existente.role
             return {"sucess":"Login OK"}, 200
         else:
             return {"Error":"Email ou senha invalido"},401
