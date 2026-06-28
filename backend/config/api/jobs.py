@@ -2,6 +2,7 @@ from flask import jsonify, request, session
 from backend.config.app.app import app
 from backend.config.app.engine import SessionLocal
 from backend.models.company.job import Jobs
+from backend.models.shared.applications import Application
 
 @app.route('/api/jobs/', methods=['POST'])
 def Create_job():
@@ -130,5 +131,49 @@ def Delete_job(job_id):
     finally:
         sessao.close()
 
-# @app.route('/api/jobs/applications/<int:user_id>/<int:job_id>')
-# def Application_job(user_id, job_id):
+@app.route('/api/jobs/company_application/<int:job_id>/<int:candidate_id>', methods=['GET'])
+def Application_job(job_id, candidate_id):
+    sessao= SessionLocal()
+
+    if 'user_id' not in session:
+        return {'erro':'Usuario nao autenticado'},401
+    if session['user_role'] != 'company':
+        return {'erro':'Usuario nao e empresa'},400
+    
+    user= sessao.query(Application).filter_by(job_id=job_id, candidate_id=candidate_id).first()
+    if not user:
+        return {'erro':'Nenhuma vaga encontrada'},200
+
+    return jsonify(user)
+
+@app.route('/api/jobs/company_applications/<int:job_id>', methods=['GET'])
+def Applications_job(job_id):
+    sessao=SessionLocal()
+
+    if 'user_id' not in session:
+        return {'erro':'Usuario nao autenticado'},401
+    if session['user_role'] != 'company':
+        return {'erro':'Usuario nao e empresa'},400
+
+    try:
+        applications= sessao.query(Application).filter_by(job_id=job_id).all()
+
+        if not applications:
+            return {'erro':'Sem candidaturas'},200
+
+        resultado = []
+        for application in applications:
+            resultado.append({
+                'nome candidato' : application.candidate.name,
+                'nome vaga': application.job.name,
+                'curriculo candidato': application.cv
+            })
+        return jsonify(resultado)
+
+    except Exception as e:
+        sessao.rollback()
+        print(f'deu erro aqui na api job applications get {e}')
+        return {'erro':'Ocorreu um erro interno'}, 404
+    
+    finally:
+        sessao.close()
